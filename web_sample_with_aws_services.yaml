@@ -1,0 +1,53 @@
+AWSTemplateFormatVersion: "2010-09-09"
+# This template creates a simple web application using AWS services
+# such as S3, Lambda, and API Gateway.
+# It includes a Lambda function that is triggered by an S3 event
+# and an API Gateway endpoint that invokes the Lambda function.
+
+Parameters:
+  ImageID:
+    Description: Image id 
+    Type: String
+    Default: ami-00a929b66ed6e0de6
+
+  InstanceType:
+    Description: EC2 instance type
+    Type: String
+    Default: t2.micro
+    AllowedValues:
+      - t2.micro
+      - t2.small
+
+Resources:
+  WebServerLaunchConfiguration:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateName: WebServerLaunchConfiguration
+      VersionDescription: v1
+      LaunchTemplateData:
+        InstanceType: !Ref InstanceType
+        ImageId: !Ref ImageID
+        UserData:
+          Fn::Base64: !Sub |
+            #!/bin/bash
+            yum update -y
+            yum install -y httpd
+            systemctl start httpd.service
+            systemctl enable httpd.service
+            echo "<h1>Hello from AWS CloudFormation</h1>" > /var/www/html/index.html
+  WebServerAutoScalingGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      AutoScalingGroupName: WebServerAutoScalingGroup
+      AvailabilityZones:
+        - us-east-1a
+        - us-east-1b
+      LaunchTemplate:
+        LaunchTemplateName: WebServerLaunchConfiguration
+        Version: !GetAtt WebServerLaunchConfiguration.LatestVersionNumber
+      MinSize: 1
+      MaxSize: 3
+      DesiredCapacity: 1
+      VPCZoneIdentifier:
+        - subnet-07c4864b7dc14d609
+        - subnet-0b70935f637163924
