@@ -84,7 +84,7 @@ Resources:
   HostedZoneCloudWatchLogs:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: /aws/routes53/webapp
+      LogGroupName: /aws/route53/webapp
       RetentionInDays: 1
 
   SNSTopic:
@@ -99,3 +99,47 @@ Resources:
       Endpoint: joseayerdis@gmail.com
       Protocol: email
       TopicArn: !Ref SNSTopic
+
+  HostedZone:
+    Type: AWS::Route53::HostedZone
+    Properties:
+      Name: websample1-pozool.com
+      QueryLoggingConfig:
+        CloudWatchLogsLogGroupArn: !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/route53/webapp'
+
+  RecordSet:
+    Type: AWS::Route53::RecordSet
+    DependsOn: HostedZone
+    Properties:
+      HostedZoneName: !Ref HostedZone
+      Name: websample1-pozool.com.
+      ResourceRecords:
+        - !GetAtt AppLoadBalancer.DNSName
+      TTL: '900'
+      Type: CNAME
+
+  LogPolicy:
+    Type: AWS::Logs::ResourcePolicy
+    Properties:
+      PolicyName: LogResourcePolicy
+      PolicyDocument: !Sub "
+        {
+          \"Version\": \"2012-10-17\",
+          \"Statement\": [
+            {
+              \"Effect\": \"Allow\",
+              \"Principal\": {
+                \"Service\": \"route53.amazonaws.com\"
+              },
+              \"Action\": [ 
+                \"logs:CreateLogGroup\",
+                \"logs:CreateLogStream\",
+                \"logs:PutLogEvents\"
+              ],
+              \"Resource\": \"arn:aws:logs:us-east-1:${AWS::AccountId}:log-group:/aws/route53/*\"
+            }
+          ]
+        }
+      "
+
+  
